@@ -7,41 +7,26 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "sqlite.db")
+DB_PATH = "../data/sqlite.db"
 
 # -------------------------------
 # Gemini API call wrapper
 # -------------------------------
-def call_gemini(prompt, model="gemini-1.5-pro"):
+def call_gemini(prompt, model="gemini-2.5-pro"):
     """
-    Calls Gemini 1.5 Pro API with a prompt.
+    Calls Gemini 2.5 Pro API with a prompt.
     Returns the generated text.
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
+    url = "https://generativeai.googleapis.com/v1beta/models/{}/generate".format(model)
+    headers = {"Authorization": f"Bearer {GEMINI_API_KEY}", "Content-Type": "application/json"}
     data = {
-        "contents": [
-            {
-                "parts": [
-                    {
-                        "text": prompt
-                    }
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.3,
-            "maxOutputTokens": 500
-        }
+        "prompt": prompt,
+        "temperature": 0.3,
+        "maxOutputTokens": 500
     }
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 200:
-        result = response.json()
-        if 'candidates' in result and len(result['candidates']) > 0:
-            return result['candidates'][0]['content']['parts'][0]['text']
-        else:
-            print("No candidates in Gemini response:", result)
-            return None
+        return response.json()['candidates'][0]['output']
     else:
         print("Gemini API error:", response.text)
         return None
@@ -73,13 +58,6 @@ def validate_candidate(candidate):
         return None
 
     try:
-        # Remove markdown code blocks if present
-        if resp.startswith('```json'):
-            resp = resp[7:]  # Remove ```json
-        if resp.endswith('```'):
-            resp = resp[:-3]  # Remove ```
-        resp = resp.strip()
-        
         data = json.loads(resp)
         return data
     except json.JSONDecodeError:
