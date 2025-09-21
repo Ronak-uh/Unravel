@@ -98,6 +98,7 @@ def call_gemini(prompt, model="gemini-2.0-flash-exp"):
 def get_trending_topics():
     """Get trending topics by scraping multiple tech news sources."""
     trending_topics = []
+    seen_titles = set()  # Track titles to avoid duplicates
     
     # Tech news sources to scrape
     sources = [
@@ -120,6 +121,16 @@ def get_trending_topics():
             "name": "Ars Technica RSS",
             "url": "https://feeds.arstechnica.com/arstechnica/index",
             "type": "rss"
+        },
+        {
+            "name": "Wired RSS",
+            "url": "https://www.wired.com/feed/rss",
+            "type": "rss"
+        },
+        {
+            "name": "MIT Technology Review",
+            "url": "https://www.technologyreview.com/feed/",
+            "type": "rss"
         }
     ]
     
@@ -133,68 +144,105 @@ def get_trending_topics():
                 # Parse RSS feeds
                 feed = feedparser.parse(source['url'])
                 
-                for entry in feed.entries[:3]:  # Get top 3 from each source
+                # Get more entries to increase variety
+                for entry in feed.entries[:5]:  # Get top 5 from each source
                     # Clean up the title and summary
                     title = entry.title.strip()
+                    
+                    # Skip if we've already seen a similar title
+                    title_words = set(title.lower().split())
+                    is_duplicate = False
+                    for seen_title in seen_titles:
+                        seen_words = set(seen_title.lower().split())
+                        # If more than 60% of words overlap, consider it a duplicate
+                        if len(title_words & seen_words) / max(len(title_words), len(seen_words)) > 0.6:
+                            is_duplicate = True
+                            break
+                    
+                    if is_duplicate:
+                        continue
+                    
+                    seen_titles.add(title)
+                    
                     summary = getattr(entry, 'summary', getattr(entry, 'description', ''))
                     
                     # Remove HTML tags from summary
                     if summary:
                         soup = BeautifulSoup(summary, 'html.parser')
-                        summary = soup.get_text().strip()[:200] + "..."
+                        summary = soup.get_text().strip()[:250] + "..."
+                    
+                    # Get publication date if available
+                    pub_date = getattr(entry, 'published_parsed', None)
                     
                     topic = {
                         "title": title,
                         "url": getattr(entry, 'link', source['url']),
-                        "snippet": summary or f"Latest trending topic from {source['name']}: {title}"
+                        "snippet": summary or f"Latest trending topic from {source['name']}: {title}",
+                        "source": source['name'],
+                        "pub_date": pub_date
                     }
                     
                     trending_topics.append(topic)
                     print(f"  ✓ Found: {title[:60]}...")
             
             # Add a small delay to be respectful to servers
-            time.sleep(1)
+            time.sleep(2)
             
         except Exception as e:
             print(f"  ⚠️ Error fetching from {source['name']}: {str(e)}")
             continue
     
-    # If we couldn't fetch any real topics, fall back to curated ones
-    if not trending_topics:
-        print("🔄 Using fallback curated topics...")
-        trending_topics = [
+    # If we couldn't fetch many real topics, add some curated ones
+    if len(trending_topics) < 5:
+        print("🔄 Adding fallback curated topics...")
+        fallback_topics = [
             {
-                "title": "AI-Powered Content Creation Revolution",
-                "url": "https://techcrunch.com/ai-content-creation",
-                "snippet": "Explore how artificial intelligence is transforming content creation for bloggers and marketers."
+                "title": "AI-Powered Development Tools Revolution",
+                "url": "https://techcrunch.com/ai-dev-tools",
+                "snippet": "How artificial intelligence is transforming software development with automated coding and testing tools.",
+                "source": "Curated"
             },
             {
-                "title": "Future of Remote Work Technology",
-                "url": "https://theverge.com/remote-work-tech",
-                "snippet": "Discover the latest technologies reshaping how teams collaborate remotely."
+                "title": "Edge Computing and 5G Integration",
+                "url": "https://theverge.com/edge-computing-5g",
+                "snippet": "The convergence of edge computing and 5G networks is enabling new real-time applications.",
+                "source": "Curated"
             },
             {
-                "title": "Sustainable Tech Innovations 2025",
-                "url": "https://arstechnica.com/sustainable-tech",
-                "snippet": "Breakthrough technologies helping create a more sustainable digital future."
+                "title": "Sustainable Data Centers and Green Tech",
+                "url": "https://arstechnica.com/green-data-centers",
+                "snippet": "How tech companies are building environmentally friendly data centers and reducing carbon footprint.",
+                "source": "Curated"
             },
             {
-                "title": "Quantum Computing Breakthroughs",
-                "url": "https://hackernews.com/quantum-computing",
-                "snippet": "Latest advances in quantum computing and their real-world applications."
+                "title": "Quantum Computing Commercial Applications",
+                "url": "https://hackernews.com/quantum-commercial",
+                "snippet": "Real-world applications of quantum computing in finance, healthcare, and logistics.",
+                "source": "Curated"
             },
             {
-                "title": "Cybersecurity in Cloud Era",
-                "url": "https://techcrunch.com/cloud-security",
-                "snippet": "Essential cybersecurity practices for modern cloud-based businesses."
+                "title": "Privacy-First Technologies and Zero-Trust Security",
+                "url": "https://wired.com/privacy-tech",
+                "snippet": "New approaches to data privacy and zero-trust security architectures in enterprise.",
+                "source": "Curated"
             }
         ]
+        
+        for topic in fallback_topics:
+            if topic['title'] not in seen_titles:
+                trending_topics.append(topic)
+                seen_titles.add(topic['title'])
     
-    # Shuffle and limit to avoid always getting the same order
-    random.shuffle(trending_topics)
-    selected_topics = trending_topics[:8]  # Limit to 8 topics
+    # Sort by recency if pub_date is available, otherwise shuffle
+    try:
+        trending_topics.sort(key=lambda x: x.get('pub_date') or (0,), reverse=True)
+    except:
+        random.shuffle(trending_topics)
     
-    print(f"📊 Found {len(selected_topics)} trending topics to process")
+    # Limit to 10 topics for variety
+    selected_topics = trending_topics[:10]
+    
+    print(f"📊 Found {len(selected_topics)} diverse trending topics to process")
     return selected_topics
 
 def run_research():
@@ -212,24 +260,37 @@ def run_research():
     cursor = conn.cursor()
     
     for topic in topics:
-        # Check if topic already exists (by title or similar URL)
-        cursor.execute("SELECT COUNT(*) FROM candidates WHERE title=? OR url=?", 
-                      (topic['title'], topic['url']))
-        if cursor.fetchone()[0] == 0:
+        # Check if topic already exists (by title similarity, not exact match)
+        cursor.execute("SELECT title FROM candidates")
+        existing_titles = [row[0] for row in cursor.fetchall()]
+        
+        # Check for similar titles (to avoid near-duplicates)
+        is_similar = False
+        topic_words = set(topic['title'].lower().split())
+        
+        for existing_title in existing_titles:
+            existing_words = set(existing_title.lower().split())
+            # If more than 70% of words overlap, consider it similar
+            if len(topic_words & existing_words) / max(len(topic_words), len(existing_words)) > 0.7:
+                is_similar = True
+                break
+        
+        if not is_similar:
             cursor.execute(
                 "INSERT INTO candidates (title, url, snippet) VALUES (?, ?, ?)",
                 (topic['title'], topic['url'], topic['snippet'])
             )
             added_count += 1
-            print(f"  ✅ Added: {topic['title'][:60]}...")
+            source_info = f" [{topic.get('source', 'Unknown')}]"
+            print(f"  ✅ Added: {topic['title'][:60]}...{source_info}")
         else:
             duplicate_count += 1
-            print(f"  🔄 Duplicate: {topic['title'][:60]}...")
+            print(f"  🔄 Similar exists: {topic['title'][:60]}...")
     
     conn.commit()
     conn.close()
     
-    print(f"📊 Research complete: {added_count} new candidates added, {duplicate_count} duplicates skipped")
+    print(f"📊 Research complete: {added_count} new candidates added, {duplicate_count} similar topics skipped")
     return added_count
 
 # ================================
@@ -303,7 +364,7 @@ def run_validation():
 def build_writing_prompt(candidate):
     """Build writing prompt for Gemini."""
     return f"""
-System: You are BlogWriter-Gemini. Output ONLY Markdown with YAML front matter.
+System: You are BlogWriter-Gemini. Output ONLY clean HTML content.
 
 User: Write a ~800 word blog post.
 Title: {candidate['title']}
@@ -312,46 +373,43 @@ Keywords: AI, blogging, technology, innovation
 Evidence summary: score={candidate['score']}, snippet="{candidate['snippet']}"
 
 Requirements:
-- Start with YAML front matter between --- delimiters (not code blocks)
-- Include title, meta_description, tags in YAML
-- Follow with markdown content including an image at the top
-- Use headings, examples, practical tips, conclusion
+- Output clean HTML content (no YAML frontmatter)
+- Start with a featured image using <img> tag
+- Use proper HTML headings (h1, h2, h3)
+- Include paragraphs, examples, practical tips, conclusion
 - Add a sources section at the end
 - Make it engaging and actionable
 
 Example format:
----
-title: "Your Title Here"
-meta_description: "Brief description under 160 characters"
-tags: ["AI", "blogging", "technology"]
----
+<img src="https://via.placeholder.com/800x400/0066cc/ffffff?text=Tech+News" alt="Featured Image" style="width:100%; height:400px; object-fit:cover; margin-bottom:20px;">
 
-![Featured Image](https://via.placeholder.com/800x400/0066cc/ffffff?text=Blog+Post+Image)
+<h1>Your Title Here</h1>
 
-# Your Title Here
+<p>Engaging introduction paragraph that hooks the reader and introduces the topic...</p>
 
-Engaging introduction paragraph that hooks the reader...
+<h2>Main Content Section</h2>
+<p>Your detailed content here with practical examples and insights...</p>
 
-## Main Content Section
+<h2>Key Benefits and Applications</h2>
+<p>More valuable content with specific examples and use cases...</p>
 
-Your detailed content here with practical examples...
+<h2>Best Practices and Tips</h2>
+<p>Actionable advice and recommendations for readers...</p>
 
-## Another Section
+<h2>Conclusion</h2>
+<p>Wrap up with key takeaways and actionable insights that readers can implement...</p>
 
-More valuable content...
+<h2>Sources and Further Reading</h2>
+<ul>
+<li>Reference sources and additional reading materials</li>
+<li>Relevant industry reports and studies</li>
+</ul>
 
-## Conclusion
-
-Wrap up with key takeaways and actionable insights...
-
-## Sources
-
-- Reference sources and additional reading
-
-IMPORTANT: Include an image right after the YAML frontmatter using markdown format:
-![Tech News](https://via.placeholder.com/800x400/0066cc/ffffff?text=Tech+News)
-
-Make the content valuable, actionable, and engaging for readers interested in technology and innovation.
+IMPORTANT: 
+- Use only HTML tags (no markdown)
+- Include a featured image at the top
+- Make content valuable and engaging for tech enthusiasts
+- Focus on practical insights and real-world applications
 """
 
 def write_post(candidate):
@@ -393,27 +451,18 @@ def ghost_jwt():
     token = jwt.encode(payload, bytes.fromhex(secret), algorithm='HS256', headers={"kid": id})
     return token
 
-def publish_post(title, md_content):
+def publish_post(title, html_content):
     """Publish a single post to Ghost CMS."""
     token = ghost_jwt()
     
-    # Handle YAML frontmatter
-    if md_content.startswith('---'):
-        parts = md_content.split('---', 2)
+    # Since we're now getting HTML content directly, we don't need markdown conversion
+    # Just clean up any potential frontmatter if it exists
+    if html_content.startswith('---'):
+        parts = html_content.split('---', 2)
         if len(parts) >= 3:
-            md_body = parts[2].strip()
-        else:
-            md_body = md_content
-    else:
-        md_body = md_content
+            html_content = parts[2].strip()
     
-    # Convert markdown to HTML (this will convert the ![image] to <img> tags)
-    html_content = markdown.markdown(
-        md_body, 
-        extensions=['markdown.extensions.extra', 'markdown.extensions.codehilite']
-    )
-    
-    # Create mobiledoc format for Ghost
+    # Create mobiledoc format for Ghost with HTML content
     mobiledoc = {
         "version": "0.3.1",
         "atoms": [],
@@ -467,9 +516,9 @@ def run_publisher():
         
         if os.path.exists(md_file):
             with open(md_file, "r", encoding="utf-8") as f:
-                md_content = f.read()
+                html_content = f.read()
             
-            if publish_post(title, md_content):
+            if publish_post(title, html_content):
                 c.execute("UPDATE candidates SET published=1 WHERE id=?", (post_id,))
                 conn.commit()
                 published_count += 1
@@ -477,7 +526,7 @@ def run_publisher():
             else:
                 print(f"❌ Failed: {title[:50]}...")
         else:
-            print(f"❌ No markdown file: post_{post_id}.md")
+            print(f"❌ No content file: post_{post_id}.md")
 
     conn.close()
     print(f"🎉 Publishing complete: {published_count}/{len(posts)} posts published")
