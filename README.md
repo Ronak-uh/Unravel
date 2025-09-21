@@ -182,36 +182,4 @@ Content is automatically categorized into:
    Business: 4 posts
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- 📖 Check [AUTOMATION.md](AUTOMATION.md) for detailed setup
-- 🚀 Check [HOSTING.md](HOSTING.md) for deployment options
-- 🐛 Open an issue for bug reports
-- 💡 Open an issue for feature requests
-
-## 🎯 Roadmap
-
-- [ ] WordPress integration
-- [ ] Multiple Ghost sites support
-- [ ] Custom AI models
-- [ ] Content scheduling
-- [ ] Social media auto-posting
-- [ ] Analytics integration
-
----
-
-**Made with ❤️ using AI automation**
-
 *Generate fresh, categorized content for your Ghost blog every 5 hours automatically!*
