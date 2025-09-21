@@ -131,21 +131,6 @@ tail -f logs/auto-pipeline-*.log
 ./auto-pipeline.sh
 ```
 
-## 🕐 Automation Schedule
-
-- **Every 5 Hours**: 00:00, 05:00, 10:00, 15:00, 20:00
-- **GitHub Actions**: Automatic on cloud platforms
-- **Cron Jobs**: For VPS/server deployments
-
-## 📱 Deployment Platforms
-
-| Platform | Cost | Setup Time | Features |
-|----------|------|------------|----------|
-| Railway | Free/$5 | 5 minutes | Auto HTTPS, Custom domains |
-| DigitalOcean | $5-12 | 10 minutes | Scalable, Monitoring |
-| Heroku | $7+ | 5 minutes | Easy deploy, Add-ons |
-| VPS | $5-10 | 30 minutes | Full control, SSH access |
-
 ## 🏷️ Categories
 
 Content is automatically categorized into:
@@ -181,37 +166,5 @@ Content is automatically categorized into:
    World: 5 posts
    Business: 4 posts
 ```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- 📖 Check [AUTOMATION.md](AUTOMATION.md) for detailed setup
-- 🚀 Check [HOSTING.md](HOSTING.md) for deployment options
-- 🐛 Open an issue for bug reports
-- 💡 Open an issue for feature requests
-
-## 🎯 Roadmap
-
-- [ ] WordPress integration
-- [ ] Multiple Ghost sites support
-- [ ] Custom AI models
-- [ ] Content scheduling
-- [ ] Social media auto-posting
-- [ ] Analytics integration
-
----
-
-**Made with ❤️ using AI automation**
 
 *Generate fresh, categorized content for your Ghost blog every 5 hours automatically!*
