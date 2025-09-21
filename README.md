@@ -131,21 +131,6 @@ tail -f logs/auto-pipeline-*.log
 ./auto-pipeline.sh
 ```
 
-## 🕐 Automation Schedule
-
-- **Every 5 Hours**: 00:00, 05:00, 10:00, 15:00, 20:00
-- **GitHub Actions**: Automatic on cloud platforms
-- **Cron Jobs**: For VPS/server deployments
-
-## 📱 Deployment Platforms
-
-| Platform | Cost | Setup Time | Features |
-|----------|------|------------|----------|
-| Railway | Free/$5 | 5 minutes | Auto HTTPS, Custom domains |
-| DigitalOcean | $5-12 | 10 minutes | Scalable, Monitoring |
-| Heroku | $7+ | 5 minutes | Easy deploy, Add-ons |
-| VPS | $5-10 | 30 minutes | Full control, SSH access |
-
 ## 🏷️ Categories
 
 Content is automatically categorized into:
