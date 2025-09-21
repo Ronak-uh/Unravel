@@ -1,56 +1,48 @@
-const Ghost = require('ghost');
+const express = require('express');
 const path = require('path');
 
-let ghost;
+const app = express();
 
-module.exports = async (req, res) => {
-  if (!ghost) {
-    try {
-      // Initialize Ghost
-      ghost = new Ghost({
-        url: process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:2368',
-        admin: {
-          url: process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:2368'
-        },
-        database: {
-          client: 'sqlite3',
-          connection: {
-            filename: '/tmp/ghost.db'
-          }
-        },
-        mail: {
-          transport: 'Direct'
-        },
-        logging: {
-          transports: ['stdout']
-        },
-        paths: {
-          contentPath: '/tmp/ghost-content'
-        },
-        privacy: {
-          useUpdateCheck: false
-        },
-        useMinFiles: false,
-        caching: {
-          frontend: {
-            maxAge: 0
-          }
-        }
-      });
+// Middleware
+app.use(express.json());
+app.use(express.static('public'));
 
-      await ghost.start();
-    } catch (error) {
-      console.error('Failed to start Ghost:', error);
-      return res.status(500).json({ error: 'Failed to initialize Ghost' });
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Unravel Content Automation System',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      pipeline: '/api/pipeline',
+      research: '/api/research'
     }
-  }
+  });
+});
 
-  // Handle the request
-  try {
-    const ghostApp = ghost.rootApp;
-    ghostApp(req, res);
-  } catch (error) {
-    console.error('Ghost request error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
+// API status endpoint
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Ghost webhook endpoint (for future use)
+app.post('/api/webhook/ghost', (req, res) => {
+  console.log('Ghost webhook received:', req.body);
+  res.json({ received: true });
+});
+
+const PORT = process.env.PORT || 3000;
+
+// For Vercel, export the app
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  // For local development
+  app.listen(PORT, () => {
+    console.log(`Unravel server running on port ${PORT}`);
+  });
+}
