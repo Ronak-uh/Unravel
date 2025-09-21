@@ -1,16 +1,5 @@
 #!/usr/bin/env python3
-"""
-Unravel - Automated Content Generation & Publishing Pipeline
-Complete automation system in a single file.
 
-This script:
-1. Validates candidates using Gemini API
-2. Writes blog posts using AI
-3. Publishes to Ghost CMS (4 posts per run)
-
-Usage: python automation.py
-For cron: python /path/to/automation.py
-"""
 
 import os
 import json
@@ -20,6 +9,10 @@ import markdown
 import jwt
 import datetime
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+import feedparser
+import time
+import random
 
 # Load environment variables
 load_dotenv()
@@ -41,12 +34,38 @@ GHOST_API_URL = f"{GHOST_URL}/ghost/api/admin/posts/"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # ================================
+# DATABASE SETUP
+# ================================
+
+def setup_database():
+    """Create and initialize the database."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Create candidates table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS candidates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        url TEXT,
+        snippet TEXT,
+        validated INTEGER DEFAULT 0,
+        score INTEGER DEFAULT 0,
+        published INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# ================================
 # GEMINI API FUNCTIONS
 # ================================
 
-def call_gemini(prompt, model="gemini-1.5-flash"):
+def call_gemini(prompt, model="gemini-2.0-flash-exp"):
     """
-    Calls Gemini API with a prompt.
+    Calls Gemini 2.5 API with a prompt.
     Returns the generated text.
     """
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
@@ -71,6 +90,147 @@ def call_gemini(prompt, model="gemini-1.5-flash"):
     else:
         print("Gemini API error:", response.text)
         return None
+
+# ================================
+# RESEARCH FUNCTIONS
+# ================================
+
+def get_trending_topics():
+    """Get trending topics by scraping multiple tech news sources."""
+    trending_topics = []
+    
+    # Tech news sources to scrape
+    sources = [
+        {
+            "name": "TechCrunch RSS",
+            "url": "https://techcrunch.com/feed/",
+            "type": "rss"
+        },
+        {
+            "name": "Hacker News",
+            "url": "https://hnrss.org/frontpage",
+            "type": "rss"
+        },
+        {
+            "name": "The Verge RSS",
+            "url": "https://www.theverge.com/rss/index.xml",
+            "type": "rss"
+        },
+        {
+            "name": "Ars Technica RSS",
+            "url": "https://feeds.arstechnica.com/arstechnica/index",
+            "type": "rss"
+        }
+    ]
+    
+    print("🌐 Scraping trending tech topics from multiple sources...")
+    
+    for source in sources:
+        try:
+            print(f"📡 Fetching from {source['name']}...")
+            
+            if source['type'] == 'rss':
+                # Parse RSS feeds
+                feed = feedparser.parse(source['url'])
+                
+                for entry in feed.entries[:3]:  # Get top 3 from each source
+                    # Clean up the title and summary
+                    title = entry.title.strip()
+                    summary = getattr(entry, 'summary', getattr(entry, 'description', ''))
+                    
+                    # Remove HTML tags from summary
+                    if summary:
+                        soup = BeautifulSoup(summary, 'html.parser')
+                        summary = soup.get_text().strip()[:200] + "..."
+                    
+                    topic = {
+                        "title": title,
+                        "url": getattr(entry, 'link', source['url']),
+                        "snippet": summary or f"Latest trending topic from {source['name']}: {title}"
+                    }
+                    
+                    trending_topics.append(topic)
+                    print(f"  ✓ Found: {title[:60]}...")
+            
+            # Add a small delay to be respectful to servers
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"  ⚠️ Error fetching from {source['name']}: {str(e)}")
+            continue
+    
+    # If we couldn't fetch any real topics, fall back to curated ones
+    if not trending_topics:
+        print("🔄 Using fallback curated topics...")
+        trending_topics = [
+            {
+                "title": "AI-Powered Content Creation Revolution",
+                "url": "https://techcrunch.com/ai-content-creation",
+                "snippet": "Explore how artificial intelligence is transforming content creation for bloggers and marketers."
+            },
+            {
+                "title": "Future of Remote Work Technology",
+                "url": "https://theverge.com/remote-work-tech",
+                "snippet": "Discover the latest technologies reshaping how teams collaborate remotely."
+            },
+            {
+                "title": "Sustainable Tech Innovations 2025",
+                "url": "https://arstechnica.com/sustainable-tech",
+                "snippet": "Breakthrough technologies helping create a more sustainable digital future."
+            },
+            {
+                "title": "Quantum Computing Breakthroughs",
+                "url": "https://hackernews.com/quantum-computing",
+                "snippet": "Latest advances in quantum computing and their real-world applications."
+            },
+            {
+                "title": "Cybersecurity in Cloud Era",
+                "url": "https://techcrunch.com/cloud-security",
+                "snippet": "Essential cybersecurity practices for modern cloud-based businesses."
+            }
+        ]
+    
+    # Shuffle and limit to avoid always getting the same order
+    random.shuffle(trending_topics)
+    selected_topics = trending_topics[:8]  # Limit to 8 topics
+    
+    print(f"📊 Found {len(selected_topics)} trending topics to process")
+    return selected_topics
+
+def run_research():
+    """Add new content candidates to the database by scraping trending topics."""
+    print("🔍 Running research phase...")
+    
+    setup_database()
+    
+    # Fetch trending topics from multiple sources
+    topics = get_trending_topics()
+    added_count = 0
+    duplicate_count = 0
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    for topic in topics:
+        # Check if topic already exists (by title or similar URL)
+        cursor.execute("SELECT COUNT(*) FROM candidates WHERE title=? OR url=?", 
+                      (topic['title'], topic['url']))
+        if cursor.fetchone()[0] == 0:
+            cursor.execute(
+                "INSERT INTO candidates (title, url, snippet) VALUES (?, ?, ?)",
+                (topic['title'], topic['url'], topic['snippet'])
+            )
+            added_count += 1
+            print(f"  ✅ Added: {topic['title'][:60]}...")
+        else:
+            duplicate_count += 1
+            print(f"  🔄 Duplicate: {topic['title'][:60]}...")
+    
+    conn.commit()
+    conn.close()
+    
+    print(f"📊 Research complete: {added_count} new candidates added, {duplicate_count} duplicates skipped")
+    return added_count
 
 # ================================
 # VALIDATION FUNCTIONS
@@ -147,21 +307,22 @@ System: You are BlogWriter-Gemini. Output ONLY Markdown with YAML front matter.
 
 User: Write a ~800 word blog post.
 Title: {candidate['title']}
-Tone: casual
-Keywords: AI, blogging, technology
+Tone: casual, engaging, informative
+Keywords: AI, blogging, technology, innovation
 Evidence summary: score={candidate['score']}, snippet="{candidate['snippet']}"
 
 Requirements:
 - Start with YAML front matter between --- delimiters (not code blocks)
 - Include title, meta_description, tags in YAML
 - Follow with markdown content including an image at the top
-- Use headings, examples, conclusion
+- Use headings, examples, practical tips, conclusion
 - Add a sources section at the end
+- Make it engaging and actionable
 
 Example format:
 ---
 title: "Your Title Here"
-meta_description: "Brief description"
+meta_description: "Brief description under 160 characters"
 tags: ["AI", "blogging", "technology"]
 ---
 
@@ -169,18 +330,28 @@ tags: ["AI", "blogging", "technology"]
 
 # Your Title Here
 
-Your content here...
+Engaging introduction paragraph that hooks the reader...
+
+## Main Content Section
+
+Your detailed content here with practical examples...
+
+## Another Section
+
+More valuable content...
 
 ## Conclusion
 
-...
+Wrap up with key takeaways and actionable insights...
 
 ## Sources
 
-...
+- Reference sources and additional reading
 
 IMPORTANT: Include an image right after the YAML frontmatter using markdown format:
-![Alt Text](https://via.placeholder.com/800x400/0066cc/ffffff?text=Tech+News)
+![Tech News](https://via.placeholder.com/800x400/0066cc/ffffff?text=Tech+News)
+
+Make the content valuable, actionable, and engaging for readers interested in technology and innovation.
 """
 
 def write_post(candidate):
@@ -226,7 +397,7 @@ def publish_post(title, md_content):
     """Publish a single post to Ghost CMS."""
     token = ghost_jwt()
     
-    # Handle YAML frontmatter (no longer extracting featured_image)
+    # Handle YAML frontmatter
     if md_content.startswith('---'):
         parts = md_content.split('---', 2)
         if len(parts) >= 3:
@@ -311,12 +482,10 @@ def run_publisher():
     conn.close()
     print(f"🎉 Publishing complete: {published_count}/{len(posts)} posts published")
 
-# ================================
-# DATABASE STATS
-# ================================
-
 def show_stats():
     """Show current database statistics."""
+    import sqlite3
+    
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -335,18 +504,14 @@ def show_stats():
     
     conn.close()
     
-    print("\n📊 DATABASE STATISTICS:")
+    print("\\n📊 DATABASE STATISTICS:")
     print(f"   Total candidates: {total}")
     print(f"   Unvalidated: {unvalidated}")
     print(f"   Ready to publish: {ready_to_publish}")
     print(f"   Published: {published}")
 
-# ================================
-# MAIN AUTOMATION PIPELINE
-# ================================
-
 def main():
-    """Run the complete automation pipeline."""
+    """Run the complete automation pipeline using modular agents."""
     print("🤖 UNRAVEL AUTOMATION PIPELINE STARTED")
     print("=" * 50)
     
@@ -366,27 +531,31 @@ def main():
         # Show initial stats
         show_stats()
         
-        # Run pipeline steps
-        print("\n" + "=" * 50)
+        print("\\n" + "=" * 50)
         
-        # Step 1: Validation
+        # Step 1: Research (add new candidates)
+        run_research()
+        
+        print("\\n" + "-" * 30)
+        
+        # Step 2: Validation
         run_validation()
         
-        print("\n" + "-" * 30)
+        print("\\n" + "-" * 30)
         
-        # Step 2: Writing
+        # Step 3: Writing (with embedded images)
         run_writer()
         
-        print("\n" + "-" * 30)
+        print("\\n" + "-" * 30)
         
-        # Step 3: Publishing (limited to 4 posts)
+        # Step 4: Publishing (limited to 4 posts with images)
         run_publisher()
         
         # Show final stats
-        print("\n" + "=" * 50)
+        print("\\n" + "=" * 50)
         show_stats()
         
-        print("\n✨ PIPELINE COMPLETE! Check your Ghost CMS for new posts.")
+        print("\\n✨ PIPELINE COMPLETE! Check your Ghost CMS for new posts.")
         
     except Exception as e:
         print(f"❌ Pipeline error: {str(e)}")
