@@ -1,90 +1,85 @@
-# 🤖 Automated Ghost CMS Blog Generator
+# 🤖 Unravel - Automated Ghost CMS Blog Generator
 
-An intelligent content generation system that automatically creates, validates, and publishes categorized blog posts to Ghost CMS every 5 hours using AI.
+A unified, intelligent content generation system that automatically creates, validates, and publishes engaging blog posts to Ghost CMS every 5 hours using Google Gemini AI.
 
 ## 🌟 Features
 
-- **🔄 Automated Content Pipeline**: Research → Validate → Write → Publish
-- **🏷️ Smart Categorization**: Auto-assigns posts to World, Finance, Technology, Health, Business categories
-- **🤖 AI-Powered**: Uses Google Gemini for content validation and writing
-- **🖼️ Image Integration**: Automatic image search and upload to Ghost CMS
-- **📊 Monitoring Dashboard**: Real-time stats and automation monitoring
-- **☁️ Cloud Ready**: Deploy to Railway, Heroku, DigitalOcean with one command
+- **🔄 Unified Automation**: Single `automation.py` file handles complete pipeline
+- **🤖 AI-Powered**: Google Gemini 1.5 Flash for content validation and writing  
+- **🖼️ Embedded Images**: Automatic image generation within post content
+- **⏰ Cron Automation**: Runs every 5 hours automatically via `run_automation.sh`
+- **📊 Smart Publishing**: Limits to 4 posts per run to maintain quality
+- **☁️ Railway Hosted**: Ghost CMS deployed on Railway for free hosting
 
 ## 📈 Performance
 
-- **68 Published Posts** with categories already generated
-- **2-4 new posts** every 5 hours
-- **48-96 posts per day** potential output
-- **6 categories** for organized content
+- **100 Candidates** in database (all validated and published)
+- **4 posts per run** with smart rate limiting
+- **Every 5 hours** automated publishing  
+- **Embedded images** for reliable display across all Ghost themes
 
 ## 🚀 Quick Start
 
 ### 1. Clone and Setup
 ```bash
-git clone https://github.com/yourusername/automated-ghost-blog.git
-cd automated-ghost-blog
+git clone https://github.com/Ronak-uh/Unravel.git
+cd Unravel
+
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-npm install
 ```
 
 ### 2. Environment Setup
 ```bash
 cp .env.example .env
 # Edit .env with your API keys:
-# - GEMINI_API_KEY
-# - GOOGLE_API_KEY  
-# - GOOGLE_CX
-# - GHOST_ADMIN_API_KEY
+# - GEMINI_API_KEY=your-gemini-api-key
+# - GHOST_ADMIN_API_KEY=your-ghost-admin-key  
+# - GHOST_URL=https://your-ghost-site.up.railway.app
 ```
 
-### 3. Deploy (Choose One)
+### 3. Run Automation
 
-**Option A: Railway (Easiest)**
+**Manual Single Run:**
 ```bash
-./deploy-railway.sh
+source .venv/bin/activate
+python automation.py
 ```
 
-**Option B: Docker Compose**
+**5-Hour Automated Run:**
 ```bash
-docker-compose -f docker-compose.prod.yml up
-```
-
-**Option C: Manual VPS**
-```bash
-./setup-cron.sh  # Sets up 5-hour automation
-python monitor.py  # View dashboard
+chmod +x run_automation.sh
+(crontab -l 2>/dev/null; echo "0 */5 * * * /path/to/Unravel/run_automation.sh") | crontab -
 ```
 
 ## 🛠️ Architecture
 
 ```
-Research Agent → Validation Agent → Writer Agent → Publisher Agent
-     ↓              ↓                ↓               ↓
-  Find Topics   Validate Quality  Create Articles  Publish to Ghost
-     ↓              ↓                ↓               ↓
-  Google API    Gemini AI API    Gemini AI API   Ghost Admin API
+Unified automation.py Pipeline:
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Validate   │───▶│    Write    │───▶│   Publish   │───▶│   Logging   │
+│  Content    │    │   Article   │    │  to Ghost   │    │   System    │
+│ (Gemini AI) │    │ (Gemini AI) │    │ (Ghost API) │    │ (File logs) │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-## 📂 Project Structure
+## 📂 Project Structure (Simplified)
 
 ```
-├── agents/                 # AI agents for content pipeline
-│   ├── research_agent.py   # Finds trending topics
-│   ├── validation_agent.py # Validates content quality
-│   ├── writer_agent.py     # Creates markdown articles
-│   └── publisher_agent.py  # Publishes to Ghost CMS
-├── docker/                 # Docker configuration
-│   ├── docker-compose.yml  # Development setup
-│   └── ghost_content/      # Ghost CMS data
-├── .github/workflows/      # GitHub Actions automation
-├── data/                   # SQLite database and generated posts
-├── logs/                   # Automation logs
-├── auto-pipeline.sh        # Main automation script
-├── monitor.py             # Monitoring dashboard
-└── deploy-railway.sh      # One-click deployment
+├── automation.py           # 🎯 Main automation pipeline (755 lines)
+├── run_automation.sh       # ⏰ Cron job wrapper script
+├── AUTOMATION_README.md    # 📖 Complete documentation
+├── data/                   # 💾 SQLite database and generated posts
+│   ├── sqlite.db          # Database with 100 candidates
+│   └── post_*.md          # Generated markdown files
+├── logs/                   # 📝 Automation execution logs
+├── .env                    # 🔐 Environment variables
+├── .venv/                  # 🐍 Python virtual environment
+└── requirements.txt        # 📦 Python dependencies
 ```
 
 ## 🔧 Configuration
@@ -92,79 +87,83 @@ Research Agent → Validation Agent → Writer Agent → Publisher Agent
 ### Required API Keys
 
 1. **Google Gemini API**: For content validation and writing
-2. **Google Custom Search API**: For topic research and images
-3. **Ghost Admin API**: For publishing posts
+2. **Ghost Admin API**: For publishing posts to your Ghost CMS
 
 ### Environment Variables
 
 ```bash
-# Ghost CMS
-GHOST_URL=https://your-domain.com
+# Ghost CMS (Railway hosted)
+GHOST_URL=https://your-ghost-site.up.railway.app
 GHOST_ADMIN_API_KEY=your-ghost-admin-key
-GHOST_API_URL=https://your-domain.com/ghost/api/admin
 
-# Google APIs
-GEMINI_API_KEY=your-gemini-key
-GOOGLE_API_KEY=your-google-key
-GOOGLE_CX=your-search-engine-id
-
-# Optional: Email notifications
-MAIL_SERVICE=Gmail
-MAIL_USER=your-email@gmail.com
-MAIL_PASS=your-app-password
+# Google Gemini AI
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ## 📊 Monitoring
 
-### Dashboard
+### Manual Run with Output
 ```bash
-python monitor.py
+source .venv/bin/activate
+python automation.py
 ```
 
-### Live Logs
+### Check Automation Logs
 ```bash
-tail -f logs/auto-pipeline-*.log
+tail -f logs/automation-*.log
 ```
 
-### Manual Run
+### Check Cron Job Status
 ```bash
-./auto-pipeline.sh
+crontab -l  # View active cron jobs
 ```
 
-## 🏷️ Categories
+## � How It Works
 
-Content is automatically categorized into:
+1. **Validation**: Checks candidate topics using Gemini AI for quality
+2. **Content Writing**: Creates engaging articles with embedded images
+3. **Publishing**: Publishes to Ghost CMS using mobiledoc format
+4. **Rate Limiting**: Publishes maximum 4 posts per run
+5. **Logging**: Tracks all operations with timestamps
 
-- **World** (5 posts) - Global news and events
-- **Finance** (8 posts) - Financial markets, stocks, crypto
-- **Technology** (20 posts) - Tech trends, AI, innovation
-- **Health** (5 posts) - Medical breakthroughs, wellness
-- **Business** (4 posts) - Business trends, productivity
-- **General** (26+ posts) - Uncategorized content
+## 🖼️ Image Strategy
+
+- **Embedded Images**: Uses `![Alt Text](image-url)` format in content
+- **Placeholder Service**: Generates tech-themed images via via.placeholder.com
+- **Theme Compatible**: Works with all Ghost themes (no featured image dependency)
 
 ## 🔒 Security
 
 - ✅ Environment variables for API keys
-- ✅ `.gitignore` excludes sensitive data
+- ✅ `.gitignore` excludes sensitive data  
+- ✅ Virtual environment isolation
 - ✅ No hardcoded credentials
-- ✅ SSL/HTTPS ready configurations
 
 ## 📈 Performance Stats
 
 ```
-📊 DATABASE STATISTICS
+📊 DATABASE STATUS
    Total Candidates: 100
-   Validated: 73
-   Published: 68
-   Ready to Publish: 5
+   All Validated: ✅
+   All Published: ✅
+   Ready for Fresh Content: ✅
 
-📂 PUBLISHED POSTS BY CATEGORY
-   Technology: 20 posts
-   General: 26 posts
-   Finance: 8 posts
-   Health: 5 posts
-   World: 5 posts
-   Business: 4 posts
+🤖 AUTOMATION FEATURES
+   Unified Pipeline: automation.py (755 lines)
+   Cron Automation: Every 5 hours
+   Rate Limiting: 4 posts per run
+   Image Strategy: Embedded in content
+   
+🏗️ TECH STACK
+   Language: Python 3.13.7
+   AI: Google Gemini 1.5 Flash
+   CMS: Ghost (Railway hosted)
+   Database: SQLite
+   Scheduling: Unix cron
 ```
 
-*Generate fresh, categorized content for your Ghost blog every 5 hours automatically!*
+## 🎉 Ready to Use!
+
+Your automated blog is now **simplified, production-ready, and maintenance-free**. Just set up the cron job and watch fresh content appear on your Ghost blog every 5 hours!
+
+For detailed setup instructions, see `AUTOMATION_README.md`.
