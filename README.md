@@ -1,22 +1,25 @@
 # 🤖 Unravel - Automated Ghost CMS Blog Generator
 
-A unified, intelligent content generation system that automatically creates, validates, and publishes engaging blog posts to Ghost CMS every 5 hours using Google Gemini AI.
+A comprehensive, intelligent content generation system that automatically researches, validates, and publishes engaging blog posts to Ghost CMS using Google Gemini 2.0 Flash AI.
 
 ## 🌟 Features
 
-- **🔄 Unified Automation**: Single `automation.py` file handles complete pipeline
-- **🤖 AI-Powered**: Google Gemini 1.5 Flash for content validation and writing  
-- **🖼️ Embedded Images**: Automatic image generation within post content
-- **⏰ Cron Automation**: Runs every 5 hours automatically via `run_automation.sh`
-- **📊 Smart Publishing**: Limits to 4 posts per run to maintain quality
-- **☁️ Railway Hosted**: Ghost CMS deployed on Railway for free hosting
+- **🔄 Dual Pipeline Architecture**: Main `automation.py` (614 lines) + Modular agent system
+- **🤖 AI-Powered**: Google Gemini 2.0 Flash for content research, validation and writing  
+- **� Smart Research**: Automatic trending topic discovery and content candidate sourcing
+- **📊 Intelligent Validation**: AI-powered quality scoring and content assessment
+- **🖼️ Rich Content**: HTML-formatted posts with embedded images and structured layouts
+- **⏰ Automated Scheduling**: Cron-based automation every 5 hours via `setup-cron.sh`
+- **� Rate Limiting**: Smart publishing limits (4 posts per run) for optimal quality
+- **☁️ Railway Hosted**: Ghost CMS deployed on Railway for production hosting
 
-## 📈 Performance
+## 📈 Current Status
 
-- **100 Candidates** in database (all validated and published)
-- **4 posts per run** with smart rate limiting
-- **Every 5 hours** automated publishing  
-- **Embedded images** for reliable display across all Ghost themes
+- **Dual Automation Systems**: Both unified and modular pipelines available
+- **614-line main pipeline** in `automation.py` 
+- **Modular agent system** for granular control
+- **Intelligent research phase** for fresh content discovery
+- **HTML-based content** with structured formatting
 
 ## 🚀 Quick Start
 
@@ -35,135 +38,231 @@ pip install -r requirements.txt
 
 ### 2. Environment Setup
 ```bash
-cp .env.example .env
-# Edit .env with your API keys:
-# - GEMINI_API_KEY=your-gemini-api-key
-# - GHOST_ADMIN_API_KEY=your-ghost-admin-key  
-# - GHOST_URL=https://your-ghost-site.up.railway.app
+# Create .env file with your API keys
+cat > .env << EOF
+GEMINI_API_KEY=your-gemini-api-key
+GHOST_ADMIN_API_KEY=your-ghost-admin-key-id:secret
+GHOST_URL=https://your-ghost-site.up.railway.app
+EOF
 ```
 
-### 3. Run Automation
+### 3. Choose Your Pipeline
 
-**Manual Single Run:**
+**Option A: Unified Pipeline (Recommended)**
 ```bash
+# Single run
 source .venv/bin/activate
 python automation.py
+
+# Setup automated cron job (every 5 hours)
+chmod +x setup-cron.sh
+./setup-cron.sh
 ```
 
-**5-Hour Automated Run:**
+**Option B: Modular Pipeline (Advanced)**
 ```bash
-chmod +x run_automation.sh
-(crontab -l 2>/dev/null; echo "0 */5 * * * /path/to/Unravel/run_automation.sh") | crontab -
+# Run full modular pipeline
+python run_modular_automation.py
+
+# Run individual phases
+python run_modular_automation.py research
+python run_modular_automation.py validation
+python run_modular_automation.py writing
+python run_modular_automation.py publishing
 ```
 
 ## 🛠️ Architecture
 
+### Unified Pipeline (automation.py)
 ```
-Unified automation.py Pipeline:
+Research → Validation → Writing → Publishing → Logging
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│  Validate   │───▶│    Write    │───▶│   Publish   │───▶│   Logging   │
-│  Content    │    │   Article   │    │  to Ghost   │    │   System    │
-│ (Gemini AI) │    │ (Gemini AI) │    │ (Ghost API) │    │ (File logs) │
+│ Trend Mining│───▶│  AI Quality │───▶│ HTML Content│───▶│ Ghost CMS   │
+│ & Discovery │    │ Validation  │    │ Generation  │    │ Publishing  │
+│ (Multi-src) │    │(Gemini 2.0) │    │(Gemini 2.0) │    │ (Admin API) │
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-## 📂 Project Structure (Simplified)
+### Modular Agent System (run_modular_automation.py)
+```
+ResearchAgent → ValidationAgent → WriterAgent → PublisherAgent
+┌──────────────┐   ┌───────────────┐   ┌─────────────┐   ┌──────────────┐
+│ • Google     │──▶│ • AI Scoring  │──▶│ • HTML Posts│──▶│ • Ghost API  │
+│   Trends     │   │ • Quality     │   │ • Images    │   │ • Rate Limit │
+│ • Tech News  │   │   Check       │   │ • Structure │   │ • Publishing │
+│ • Topic Gen  │   │ • Relevance   │   │ • SEO Meta  │   │ • Tracking   │
+└──────────────┘   └───────────────┘   └─────────────┘   └──────────────┘
+```
+
+## 📂 Project Structure
 
 ```
-├── automation.py           # 🎯 Main automation pipeline (755 lines)
-├── run_automation.sh       # ⏰ Cron job wrapper script
-├── AUTOMATION_README.md    # 📖 Complete documentation
-├── data/                   # 💾 SQLite database and generated posts
-│   ├── sqlite.db          # Database with 100 candidates
-│   └── post_*.md          # Generated markdown files
-├── logs/                   # 📝 Automation execution logs
-├── .env                    # 🔐 Environment variables
-├── .venv/                  # 🐍 Python virtual environment
-└── requirements.txt        # 📦 Python dependencies
+├── automation.py              # 🎯 Main unified pipeline (614 lines)
+├── run_modular_automation.py  # 🔧 Modular agent orchestrator
+├── setup-cron.sh             # ⏰ Cron job automation setup
+├── AUTOMATION_README.md       # 📖 Detailed pipeline documentation
+├── agents/                    # 🤖 Modular agent system
+│   ├── validation_agent.py    # AI quality validation
+│   └── writer_agent.py        # Content generation
+├── data/                      # 💾 Database and generated content
+│   ├── sqlite.db             # SQLite database
+│   └── post_*.md             # Generated content files
+├── logs/                      # 📝 Execution and cron logs
+├── .env                       # 🔐 Environment variables
+├── .venv/                     # 🐍 Python virtual environment
+├── requirements.txt           # 📦 Python dependencies
+└── railway-deploy.md          # 🚂 Railway deployment guide
 ```
 
 ## 🔧 Configuration
 
 ### Required API Keys
 
-1. **Google Gemini API**: For content validation and writing
-2. **Ghost Admin API**: For publishing posts to your Ghost CMS
+1. **Google Gemini API**: Get from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. **Ghost Admin API**: From your Ghost Admin → Integrations → Custom Integrations
 
-### Environment Variables
+### Environment Variables (.env)
 
 ```bash
-# Ghost CMS (Railway hosted)
-GHOST_URL=https://your-ghost-site.up.railway.app
-GHOST_ADMIN_API_KEY=your-ghost-admin-key
-
-# Google Gemini AI
+# Google Gemini 2.0 Flash API
 GEMINI_API_KEY=your-gemini-api-key
+
+# Ghost CMS Configuration
+GHOST_URL=https://your-ghost-site.up.railway.app
+GHOST_ADMIN_API_KEY=id:secret-from-ghost-admin
+
+# Optional: Google Search (for enhanced research)
+GOOGLE_API_KEY=your-google-search-api-key
+GOOGLE_CSE_ID=your-custom-search-engine-id
 ```
 
-## 📊 Monitoring
+### Database Schema
 
-### Manual Run with Output
+The SQLite database (`data/sqlite.db`) contains:
+- **candidates** table: Content ideas with validation scores
+- **Columns**: id, title, url, snippet, validated, score, published, created_at
+
+## 📊 Monitoring & Operations
+
+### Manual Execution
 ```bash
+# Unified pipeline
 source .venv/bin/activate
 python automation.py
+
+# Modular pipeline
+python run_modular_automation.py
+
+# Individual agent phases
+python run_modular_automation.py validation
 ```
 
-### Check Automation Logs
+### Check System Status
 ```bash
+# View automation logs
 tail -f logs/automation-*.log
+tail -f logs/cron.log
+
+# Check cron job status
+crontab -l
+
+# Database statistics
+sqlite3 data/sqlite.db "SELECT COUNT(*) as total FROM candidates;"
+sqlite3 data/sqlite.db "SELECT COUNT(*) as published FROM candidates WHERE published=1;"
 ```
 
-### Check Cron Job Status
+### Cron Management
 ```bash
-crontab -l  # View active cron jobs
+# Setup automation (every 5 hours)
+./setup-cron.sh
+
+# Remove automation
+crontab -l | grep -v 'automation.py' | crontab -
 ```
 
-## � How It Works
+## ⚙️ How It Works
 
-1. **Validation**: Checks candidate topics using Gemini AI for quality
-2. **Content Writing**: Creates engaging articles with embedded images
-3. **Publishing**: Publishes to Ghost CMS using mobiledoc format
-4. **Rate Limiting**: Publishes maximum 4 posts per run
-5. **Logging**: Tracks all operations with timestamps
+### 1. Research Phase
+- **Trend Discovery**: Scrapes Google Trends, tech news sources
+- **Topic Generation**: AI-powered topic suggestion
+- **Candidate Storage**: Stores potential content ideas in SQLite
 
-## 🖼️ Image Strategy
+### 2. Validation Phase  
+- **AI Quality Check**: Gemini 2.0 Flash analyzes content relevance
+- **Scoring System**: 1-100 score based on factual accuracy, relevance, quality
+- **Smart Filtering**: Only high-quality candidates proceed
 
-- **Embedded Images**: Uses `![Alt Text](image-url)` format in content
-- **Placeholder Service**: Generates tech-themed images via via.placeholder.com
-- **Theme Compatible**: Works with all Ghost themes (no featured image dependency)
+### 3. Content Generation
+- **HTML Creation**: Structured HTML posts with proper formatting
+- **Image Integration**: Automatic featured and inline image placement
+- **SEO Optimization**: Meta descriptions, tags, and structured content
 
-## 🔒 Security
+### 4. Publishing
+- **Ghost API**: Direct publishing via Ghost Admin API
+- **Rate Limiting**: Maximum 4 posts per run for quality control
+- **Status Tracking**: Complete audit trail of published content
 
-- ✅ Environment variables for API keys
-- ✅ `.gitignore` excludes sensitive data  
-- ✅ Virtual environment isolation
-- ✅ No hardcoded credentials
+## 🖼️ Content Strategy
 
-## 📈 Performance Stats
+- **HTML Format**: Modern HTML structure for better Ghost compatibility
+- **Featured Images**: Auto-generated tech-themed images via placeholder services  
+- **Inline Images**: Strategic image placement within content sections
+- **Structured Layout**: Consistent H1/H2 headings, paragraphs, and lists
+- **SEO Ready**: Meta descriptions, tags, and semantic HTML structure
+- **Theme Agnostic**: Works with all Ghost themes and custom designs
+
+## 🔒 Security & Best Practices
+
+- ✅ **Environment isolation**: Virtual environment and .env files
+- ✅ **API key security**: No hardcoded credentials, gitignore protection
+- ✅ **Rate limiting**: Respectful API usage with built-in delays
+- ✅ **Error handling**: Comprehensive exception handling and logging
+- ✅ **Audit trail**: Complete logging of all pipeline operations
+- ✅ **Database integrity**: SQLite with proper transaction handling
+
+## 📈 Performance & Statistics
 
 ```
-📊 DATABASE STATUS
-   Total Candidates: 100
-   All Validated: ✅
-   All Published: ✅
-   Ready for Fresh Content: ✅
-
-🤖 AUTOMATION FEATURES
-   Unified Pipeline: automation.py (755 lines)
-   Cron Automation: Every 5 hours
+🤖 AUTOMATION STATUS
+   Pipeline Type: Dual (Unified + Modular)
+   Main File Size: 614 lines (automation.py)
+   Execution Frequency: Every 5 hours
    Rate Limiting: 4 posts per run
-   Image Strategy: Embedded in content
+   
+🧠 AI CAPABILITIES  
+   Model: Google Gemini 2.0 Flash
+   Research: Multi-source trending topics
+   Validation: Quality scoring (1-100)
+   Content: HTML with embedded images
    
 🏗️ TECH STACK
-   Language: Python 3.13.7
-   AI: Google Gemini 1.5 Flash
+   Language: Python 3.11+
+   Database: SQLite with audit trail
    CMS: Ghost (Railway hosted)
-   Database: SQLite
    Scheduling: Unix cron
+   Architecture: Agent-based pipeline
+   
+📊 PIPELINE METRICS
+   Research Sources: Google Trends + Tech News
+   Validation Pass Rate: AI-determined
+   Content Format: Structured HTML
+   Publishing Success: Ghost Admin API
 ```
 
-## 🎉 Ready to Use!
+## � Production Ready Features
 
-Your automated blog is now **simplified, production-ready, and maintenance-free**. Just set up the cron job and watch fresh content appear on your Ghost blog every 5 hours!
+- **🔄 Dual Architecture**: Choose between unified or modular pipeline
+- **🤖 Advanced AI**: Gemini 2.0 Flash for superior content quality
+- **📈 Smart Research**: Multi-source trending topic discovery
+- **🎨 Rich Content**: HTML formatting with embedded images
+- **⚡ Production Hosting**: Railway deployment with custom domains
+- **📊 Comprehensive Logging**: Full audit trail and error tracking
+- **🔧 Easy Setup**: One-command cron automation
 
-For detailed setup instructions, see `AUTOMATION_README.md`.
+## 🎉 Ready to Deploy!
+
+Your automated blog system is **production-ready and highly configurable**. Choose your preferred pipeline, set up cron automation, and watch high-quality content appear on your Ghost blog every 5 hours!
+
+For detailed setup and configuration, see:
+- `AUTOMATION_README.md` - Complete pipeline documentation
+- `railway-deploy.md` - Railway hosting setup guide
